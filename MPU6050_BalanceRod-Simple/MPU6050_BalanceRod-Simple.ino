@@ -30,18 +30,20 @@ int16_t gx, gy, gz;
 // list of the accel X/Y/Z and then gyro X/Y/Z values in decimal. Easy to read,
 // not so easy to parse, and slow(er) over UART.
 #define OUTPUT_READABLE_ACCELGYRO
-
-// uncomment "OUTPUT_BINARY_ACCELGYRO" to send all 6 axes of data as 16-bit
-// binary, one right after the other. This is very fast (as fast as possible
-// without compression or data loss), and easy to parse, but impossible to read
-// for a human.
-//#define OUTPUT_BINARY_ACCELGYRO
-
-
 #define LED_PIN 13
 bool blinkState = false;
+#define myPwm 9
+#define in1 8
+#define in2 7
+#define in3 6
+#define in4 7
 
 void setup() {
+    pinMode(myPwm, OUTPUT);
+    pinMode(in1, OUTPUT);
+    pinMode(in2, OUTPUT);
+    pinMode(in3, OUTPUT);
+    pinMode(in4, OUTPUT);
     myservo.attach(10);  // attaches the servo on pin 9 to the servo object
     // join I2C bus (I2Cdev library doesn't do this automatically)
     #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
@@ -92,6 +94,10 @@ void setup() {
 //    mpu.setZAccelOffset(1788); // 1688 factory default for my test chip
     // configure Arduino LED pin for output
     pinMode(LED_PIN, OUTPUT);
+    
+      // Set initial rotation direction
+    digitalWrite(in1, LOW);
+    digitalWrite(in2, HIGH);
 }
 
 void loop() {
@@ -113,37 +119,19 @@ void loop() {
         Serial.println(gz);
 
         // BALANCE
-        int upLimit = 13000;
-        int downLimit = 15000;
-        int i = 40; // var for up
-        int a = 45; //var for down
-        if (ax < upLimit ) {
-           for (i = ax; i <= upLimit; i += 1) { // goes from 0 degrees to 180 degrees
-            // in steps of 1 degree
-            myservo.write(pos);              // tell servo to go to position in variable 'pos'
-            delay(60);                       // waits 15 ms for the servo to reach the position
-          }
-//          myservo.write(95); 
-//          delay(80);
-        } else if (ax > downLimit) {
-           for (pos = 50; pos >= downLimit; pos -= 1) { // goes from 0 degrees to 180 degrees
-            // in steps of 1 degree
-            myservo.write(pos);              // tell servo to go to position in variable 'pos'
-            delay(60);                       // waits 15 ms for the servo to reach the position
-          }
-//          myservo.write(10); 
-//          delay(80);
-        };
+        int upLimit = 6000;
+        int downLimit = 10;
+        analogWrite(myPwm, 255); // Send PWM signal to L298N Enable pin
+        if (ay > downLimit) {
+          digitalWrite(in1, LOW);
+          digitalWrite(in2, HIGH);
+          delay(80);
+        } else {
+          digitalWrite(in1, LOW);
+          digitalWrite(in2, LOW);
+          delay(80);
+        }
 
-    #endif
-
-    #ifdef OUTPUT_BINARY_ACCELGYRO
-        Serial.write((uint8_t)(ax >> 8)); Serial.write((uint8_t)(ax & 0xFF));
-        Serial.write((uint8_t)(ay >> 8)); Serial.write((uint8_t)(ay & 0xFF));
-        Serial.write((uint8_t)(az >> 8)); Serial.write((uint8_t)(az & 0xFF));
-        Serial.write((uint8_t)(gx >> 8)); Serial.write((uint8_t)(gx & 0xFF));
-        Serial.write((uint8_t)(gy >> 8)); Serial.write((uint8_t)(gy & 0xFF));
-        Serial.write((uint8_t)(gz >> 8)); Serial.write((uint8_t)(gz & 0xFF));
     #endif
 
     // blink LED to indicate activity
